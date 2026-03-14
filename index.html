@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 クリップボード読み上げツール (v1.1)</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #fdfaf9; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+        h2 { margin: 0 0 15px 0; color: #cc4400; font-size: 20px; }
+        textarea { width: 100%; height: 120px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; padding: 10px; font-size: 14px; box-sizing: border-box; resize: none; background: #fcfcfc; }
+        .btn { padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; border: none; transition: 0.2s; }
+        .btn-primary { background: #cc4400; color: white; margin-bottom: 10px; width: 100%; }
+        .btn-primary:hover { background: #aa3300; }
+        .btn-secondary { background: #eee; color: #666; font-size: 12px; padding: 8px; width: 100%; }
+        .status { margin-top: 15px; font-size: 12px; color: #888; }
+        .voice-options { margin-bottom: 15px; text-align: left; font-size: 12px; }
+        select { width: 100%; padding: 5px; border-radius: 4px; border: 1px solid #ddd; }
+    </style>
+
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js');
+        }
+    </script>
+</head>
+<body>
+
+<div class="card">
+    <h2>📋 読み上げツール</h2>
+    <textarea id="textInput" placeholder="ここに貼り付けるか、下のボタンで読み取ります"></textarea>
+    
+    <div class="voice-options">
+        <label>声の選択:</label>
+        <select id="voiceSelect"></select>
+    </div>
+
+    <button class="btn btn-primary" onclick="readFromClipboard()">📋 読み上げる</button>
+    <button class="btn btn-secondary" onclick="stopTTS()">⏹️ 停止</button>
+    
+    <div id="status" class="status">待機中</div>
+</div>
+
+<script>
+    const synth = window.speechSynthesis;
+    const textInput = document.getElementById('textInput');
+    const statusEl = document.getElementById('status');
+    const voiceSelect = document.getElementById('voiceSelect');
+    let voices = [];
+
+    // 音声リストの取得
+    function populateVoiceList() {
+        voices = synth.getVoices().filter(voice => voice.lang.includes('ja') || voice.lang.includes('jp'));
+        voiceSelect.innerHTML = '';
+        voices.forEach((voice, i) => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.setAttribute('data-lang', voice.lang);
+            option.setAttribute('data-name', voice.name);
+            voiceSelect.appendChild(option);
+        });
+    }
+
+    populateVoiceList();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
+    async function readFromClipboard() {
+        try {
+            // クリップボードから読み取り (ブラウザの許可が必要)
+            const text = await navigator.clipboard.readText();
+            textInput.value = text;
+            
+            if (text.trim() === "") {
+                statusEl.textContent = "クリップボードが空です";
+                return;
+            }
+
+            speakText(text);
+        } catch (err) {
+            console.error("Clipboard access failed:", err);
+            statusEl.textContent = "テキストを入力または貼り付けてください";
+            // フォールバック: textareaに既にあるものを読み上げ
+            if (textInput.value.trim() !== "") {
+                speakText(textInput.value);
+            }
+        }
+    }
+
+    function speakText(text) {
+        synth.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // 選択された音声を設定
+        const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
+        voices.forEach((voice) => {
+            if (voice.name === selectedOption) {
+                utterance.voice = voice;
+            }
+        });
+
+        utterance.lang = 'ja-JP';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+
+        utterance.onstart = () => { statusEl.textContent = "読み上げ中..."; };
+        utterance.onend = () => { statusEl.textContent = "読み上げ完了"; };
+
+        synth.speak(utterance);
+    }
+
+    function stopTTS() {
+        synth.cancel();
+        statusEl.textContent = "停止しました";
+    }
+</script>
+
+</body>
+</html>
