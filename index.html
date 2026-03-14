@@ -3,19 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📋 クリップボード読み上げツール (v1.1)</title>
+    <title>📋 クリップボード読み上げツール (v1.2 - 高機能版)</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #fdfaf9; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
-        h2 { margin: 0 0 15px 0; color: #cc4400; font-size: 20px; }
-        textarea { width: 100%; height: 120px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; padding: 10px; font-size: 14px; box-sizing: border-box; resize: none; background: #fcfcfc; }
-        .btn { padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; border: none; transition: 0.2s; }
-        .btn-primary { background: #cc4400; color: white; margin-bottom: 10px; width: 100%; }
-        .btn-primary:hover { background: #aa3300; }
-        .btn-secondary { background: #eee; color: #666; font-size: 12px; padding: 8px; width: 100%; }
-        .status { margin-top: 15px; font-size: 12px; color: #888; }
-        .voice-options { margin-bottom: 15px; text-align: left; font-size: 12px; }
-        select { width: 100%; padding: 5px; border-radius: 4px; border: 1px solid #ddd; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #fdfaf9; color: #333; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); width: 90%; max-width: 450px; text-align: center; }
+        h2 { margin: 0 0 20px 0; color: #cc4400; font-size: 22px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        textarea { width: 100%; height: 100px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 10px; padding: 12px; font-size: 14px; box-sizing: border-box; resize: none; background: #fafafa; }
+        
+        .control-group { text-align: left; margin-bottom: 15px; background: #fefefe; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
+        .control-item { margin-bottom: 10px; }
+        .control-item:last-child { margin-bottom: 0; }
+        label { display: block; font-size: 12px; font-weight: bold; color: #666; margin-bottom: 5px; }
+        
+        select, input[type="range"] { width: 100%; cursor: pointer; }
+        .range-value { float: right; font-weight: normal; color: #cc4400; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn { flex: 1; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 30px; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: #cc4400; color: white; box-shadow: 0 4px 10px rgba(204, 68, 0, 0.3); }
+        .btn-primary:hover { background: #aa3300; transform: translateY(-1px); }
+        .btn-secondary { background: #eee; color: #666; font-size: 14px; }
+        .btn-secondary:hover { background: #ddd; }
+        
+        .status { margin-top: 20px; font-size: 13px; color: #888; font-style: italic; }
+        .footer { margin-top: 20px; font-size: 10px; color: #ccc; }
     </style>
 
     <!-- PWA Settings -->
@@ -30,18 +41,34 @@
 <body>
 
 <div class="card">
-    <h2>📋 読み上げツール</h2>
+    <h2>📋 読み上げツール <small style="font-size: 12px; color: #999;">v1.2</small></h2>
+    
     <textarea id="textInput" placeholder="ここに貼り付けるか、下のボタンで読み取ります"></textarea>
     
-    <div class="voice-options">
-        <label>声の選択:</label>
-        <select id="voiceSelect"></select>
+    <div class="control-group">
+        <div class="control-item">
+            <label>🎙️ 音声の種類:</label>
+            <select id="voiceSelect"></select>
+        </div>
+        
+        <div class="control-item">
+            <label>⚡ スピード: <span id="rateValue" class="range-value">1.0</span></label>
+            <input type="range" id="rateRange" min="0.5" max="2.0" step="0.1" value="1.0">
+        </div>
+        
+        <div class="control-item">
+            <label>🎵 ピッチ（声の高さ）: <span id="pitchValue" class="range-value">1.0</span></label>
+            <input type="range" id="pitchRange" min="0.5" max="2.0" step="0.1" value="1.0">
+        </div>
     </div>
 
-    <button class="btn btn-primary" onclick="readFromClipboard()">📋 読み上げる</button>
-    <button class="btn btn-secondary" onclick="stopTTS()">⏹️ 停止</button>
+    <div class="btn-group">
+        <button class="btn btn-primary" onclick="readFromClipboard()">▶ 読み上げる</button>
+        <button class="btn btn-secondary" onclick="stopTTS()">⏹ 停止</button>
+    </div>
     
-    <div id="status" class="status">待機中</div>
+    <div id="status" class="status">Ready</div>
+    <div class="footer">Chris Secretarial Service</div>
 </div>
 
 <script>
@@ -49,17 +76,35 @@
     const textInput = document.getElementById('textInput');
     const statusEl = document.getElementById('status');
     const voiceSelect = document.getElementById('voiceSelect');
+    const rateRange = document.getElementById('rateRange');
+    const rateValue = document.getElementById('rateValue');
+    const pitchRange = document.getElementById('pitchRange');
+    const pitchValue = document.getElementById('pitchValue');
+    
     let voices = [];
 
-    // 音声リストの取得
+    // スライダーの値表示の連動
+    rateRange.oninput = () => { rateValue.textContent = rateRange.value; };
+    pitchRange.oninput = () => { pitchValue.textContent = pitchRange.value; };
+
+    // 音声リストの取得（日本語優先）
     function populateVoiceList() {
-        voices = synth.getVoices().filter(voice => voice.lang.includes('ja') || voice.lang.includes('jp'));
+        // OS/ブラウザによってはロードに時間がかかるため、日本語を含むものを最優先で並び替える
+        const rawVoices = synth.getVoices();
+        const jaVoices = rawVoices.filter(v => v.lang.includes('ja') || v.lang.includes('jp'));
+        const otherVoices = rawVoices.filter(v => !v.lang.includes('ja') && !v.lang.includes('jp'));
+        
+        voices = [...jaVoices, ...otherVoices];
+        
         voiceSelect.innerHTML = '';
         voices.forEach((voice, i) => {
             const option = document.createElement('option');
-            option.textContent = `${voice.name} (${voice.lang})`;
-            option.setAttribute('data-lang', voice.lang);
-            option.setAttribute('data-name', voice.name);
+            option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' [Default]' : ''}`;
+            option.value = i;
+            if (voice.lang.includes('ja')) {
+                // 日本語の最初の一つを選択状態にする
+                if (jaVoices[0] === voice) option.selected = true;
+            }
             voiceSelect.appendChild(option);
         });
     }
@@ -71,52 +116,51 @@
 
     async function readFromClipboard() {
         try {
-            // クリップボードから読み取り (ブラウザの許可が必要)
+            // クリップボードからの取得（ブラウザ許可が必要）
             const text = await navigator.clipboard.readText();
-            textInput.value = text;
-            
-            if (text.trim() === "") {
-                statusEl.textContent = "クリップボードが空です";
-                return;
+            if (text.trim() !== "") {
+                textInput.value = text;
             }
-
-            speakText(text);
         } catch (err) {
-            console.error("Clipboard access failed:", err);
-            statusEl.textContent = "テキストを入力または貼り付けてください";
-            // フォールバック: textareaに既にあるものを読み上げ
-            if (textInput.value.trim() !== "") {
-                speakText(textInput.value);
-            }
+            console.warn("Clipboard read permission denied, using textarea content.");
         }
+
+        const currentText = textInput.value.trim();
+        if (currentText === "") {
+            statusEl.textContent = "テキストがありません";
+            return;
+        }
+
+        speakText(currentText);
     }
 
     function speakText(text) {
-        synth.cancel();
+        synth.cancel(); // 前の再生を止める
 
         const utterance = new SpeechSynthesisUtterance(text);
         
-        // 選択された音声を設定
-        const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
-        voices.forEach((voice) => {
-            if (voice.name === selectedOption) {
-                utterance.voice = voice;
-            }
-        });
+        // 選択された音声の設定
+        if (voices[voiceSelect.value]) {
+            utterance.voice = voices[voiceSelect.value];
+        }
 
+        utterance.rate = parseFloat(rateRange.value);
+        utterance.pitch = parseFloat(pitchRange.value);
         utterance.lang = 'ja-JP';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
 
-        utterance.onstart = () => { statusEl.textContent = "読み上げ中..."; };
-        utterance.onend = () => { statusEl.textContent = "読み上げ完了"; };
+        utterance.onstart = () => { statusEl.textContent = "🔊 読み上げ中..."; };
+        utterance.onend = () => { statusEl.textContent = "✅ 完了"; };
+        utterance.onerror = (e) => { 
+            console.error(e);
+            statusEl.textContent = "⚠️ エラーが発生しました"; 
+        };
 
         synth.speak(utterance);
     }
 
     function stopTTS() {
         synth.cancel();
-        statusEl.textContent = "停止しました";
+        statusEl.textContent = "⏹️ 停止しました";
     }
 </script>
 
